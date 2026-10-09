@@ -1,0 +1,151 @@
+-- Raven Academy Drop Tracker & Teleport Script
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+-- GUI Parent
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DropTrackerGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Variables
+local trackingActive = false
+local currentDropPart = nil
+
+-- 1. Mini Black Circle Toggle Button
+local CircleBtn = Instance.new("TextButton")
+CircleBtn.Size = UDim2.new(0, 45, 0, 45)
+CircleBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
+CircleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+CircleBtn.Text = "🌑"
+CircleBtn.TextSize = 20
+CircleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CircleBtn.Active = true
+CircleBtn.Draggable = true
+CircleBtn.Parent = ScreenGui
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(1, 0)
+Corner.Parent = CircleBtn
+
+-- 2. Main Control Panel
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 190, 0, 110)
+MainFrame.Position = UDim2.new(0.05, 55, 0.2, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+MainFrame.Visible = false
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "🎯 رادار الدروب"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 16
+Title.Parent = MainFrame
+
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0.85, 0, 0, 40)
+ToggleBtn.Position = UDim2.new(0.075, 0, 0.45, 0)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40) -- Red initially
+ToggleBtn.Text = "تجهيز"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.TextSize = 18
+ToggleBtn.Parent = MainFrame
+
+local BtnCorner = Instance.new("UICorner")
+BtnCorner.CornerRadius = UDim.new(0, 8)
+BtnCorner.Parent = ToggleBtn
+
+-- 3. Alert Popup Frame
+local AlertFrame = Instance.new("Frame")
+AlertFrame.Size = UDim2.new(0, 220, 0, 120)
+AlertFrame.Position = UDim2.new(0.5, -110, 0.4, 0)
+AlertFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+AlertFrame.Visible = false
+AlertFrame.Active = true
+AlertFrame.Draggable = true
+AlertFrame.Parent = ScreenGui
+
+local AlertCorner = Instance.new("UICorner")
+AlertCorner.CornerRadius = UDim.new(0, 10)
+AlertCorner.Parent = AlertFrame
+
+local AlertText = Instance.new("TextLabel")
+AlertText.Size = UDim2.new(1, -10, 0, 50)
+AlertText.Position = UDim2.new(0, 5, 0, 10)
+AlertText.Text = "📦 لقد سقط الدروب!\nهل أنت مستعد للانتقال له؟"
+AlertText.TextColor3 = Color3.fromRGB(255, 220, 0)
+AlertText.BackgroundTransparency = 1
+AlertText.Font = Enum.Font.SourceSansBold
+AlertText.TextSize = 15
+AlertText.Parent = AlertFrame
+
+local YesBtn = Instance.new("TextButton")
+YesBtn.Size = UDim2.new(0.8, 0, 0, 35)
+YesBtn.Position = UDim2.new(0.1, 0, 0.6, 0)
+YesBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+YesBtn.Text = "نعم (انتقال)"
+YesBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+YesBtn.Font = Enum.Font.SourceSansBold
+YesBtn.TextSize = 16
+YesBtn.Parent = AlertFrame
+
+local YesCorner = Instance.new("UICorner")
+YesCorner.CornerRadius = UDim.new(0, 6)
+YesCorner.Parent = YesBtn
+
+-- Toggle GUI visibility
+CircleBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- Toggle Tracking Status (Red / Green)
+ToggleBtn.MouseButton1Click:Connect(function()
+    trackingActive = not trackingActive
+    if trackingActive then
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 80) -- Green
+        ToggleBtn.Text = "مُترقب (جاري الرصد)"
+    else
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40) -- Red
+        ToggleBtn.Text = "تجهيز"
+        AlertFrame.Visible = false
+    end
+end)
+
+-- Teleport Logic
+local function teleportToDrop(targetPart)
+    if targetPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local cf = targetPart:IsA("Model") and targetPart:GetPivot() or targetPart.CFrame
+        LocalPlayer.Character.HumanoidRootPart.CFrame = cf + Vector3.new(0, 5, 0)
+    end
+end
+
+YesBtn.MouseButton1Click:Connect(function()
+    AlertFrame.Visible = false
+    if currentDropPart then
+        teleportToDrop(currentDropPart)
+    end
+end)
+
+-- Detector Function for Drops
+local function checkObject(obj)
+    if not trackingActive then return end
+    local name = string.lower(obj.Name)
+    if name:find("drop") or name:find("airdrop") or name:find("crate") or name:find("دروب") or name:find("صندوق") then
+        currentDropPart = obj
+        AlertFrame.Visible = true
+    end
+end
+
+Workspace.DescendantAdded:Connect(checkObject)

@@ -1,0 +1,238 @@
+-- [[ سكربت الانتقام الإمبراطوري - أكاديمية ريفن ]] --
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+
+-- متغيرات لحفظ المواقع والأدوات
+local originalPosition = nil
+local targetPlayer = nil
+
+-- إنشاء الواجهة (GUI)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "RavenRevengeUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- 1. الزر العائم (الدائرة الزرقاء)
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 50, 0, 50)
+ToggleButton.Position = UDim2.new(0.1, 0, 0.2, 0)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+ToggleButton.Text = "⚡"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 24
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.Parent = ScreenGui
+
+-- جعل الدائرة مستديرة بالكامل
+local UICorner_Toggle = Instance.new("UICorner")
+UICorner_Toggle.CornerRadius = UDim.new(1, 0)
+UICorner_Toggle.Parent = ToggleButton
+
+-- إضافة ميزة السحب (Drag) المتوافقة مع الهواتف والـ Delta
+local dragging, dragInput, dragStart, startPos
+ToggleButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = ToggleButton.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+ToggleButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        ToggleButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- 2. اللوحة الرئيسية (Main Frame)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 280, 0, 220)
+MainFrame.Position = UDim2.new(0.5, -140, 0.4, -110)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
+MainFrame.Visible = false
+MainFrame.Parent = ScreenGui
+
+local UICorner_Frame = Instance.new("UICorner")
+UICorner_Frame.CornerRadius = UDim.new(0, 12)
+UICorner_Frame.Parent = MainFrame
+
+-- عنوان اللوحة
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundTransparency = 1
+Title.Text = "لوحة الانتقام الصامت 🎯"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+Title.Font = Enum.Font.SourceSansBold
+Title.Parent = MainFrame
+
+-- خانة كتابة الاسم (TextBox)
+local NameInput = Instance.new("TextBox")
+NameInput.Size = UDim2.new(0.9, 0, 0, 35)
+NameInput.Position = UDim2.new(0.05, 0, 0.25, 0)
+NameInput.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
+NameInput.PlaceholderText = "اكتب اسم الخصم هنا..."
+NameInput.Text = ""
+NameInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+NameInput.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+NameInput.TextSize = 16
+NameInput.Font = Enum.Font.SourceSans
+NameInput.Parent = MainFrame
+
+local UICorner_Input = Instance.new("UICorner")
+UICorner_Input.CornerRadius = UDim.new(0, 6)
+UICorner_Input.Parent = NameInput
+
+-- زر الخطوة 1: انتقال للهدف
+local BtnStep1 = Instance.new("TextButton")
+BtnStep1.Size = UDim2.new(0.9, 0, 0, 35)
+BtnStep1.Position = UDim2.new(0.05, 0, 0.48, 0)
+BtnStep1.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+BtnStep1.Text = "1. انتقال للهدف (كلبشه سريعاً!)"
+BtnStep1.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnStep1.TextSize = 15
+BtnStep1.Font = Enum.Font.SourceSansBold
+BtnStep1.Parent = MainFrame
+
+local UICorner_Btn1 = Instance.new("UICorner")
+UICorner_Btn1.CornerRadius = UDim.new(0, 6)
+UICorner_Btn1.Parent = BtnStep1
+
+-- زر الخطوة 2: إسقاط وعودة
+local BtnStep2 = Instance.new("TextButton")
+BtnStep2.Size = UDim2.new(0.9, 0, 0, 35)
+BtnStep2.Position = UDim2.new(0.05, 0, 0.70, 0)
+BtnStep2.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+BtnStep2.Text = "2. إسقاط في الفويد والعودة 💀"
+BtnStep2.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnStep2.TextSize = 15
+BtnStep2.Font = Enum.Font.SourceSansBold
+BtnStep2.Parent = MainFrame
+
+local UICorner_Btn2 = Instance.new("UICorner")
+UICorner_Btn2.CornerRadius = UDim.new(0, 6)
+UICorner_Btn2.Parent = BtnStep2
+
+-- زر الإغلاق (X) - تم إصلاح علامة التنصيص المفقودة هنا
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(0.88, 0, 0.02, 0)
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.Text = "❌"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+CloseBtn.TextSize = 16
+CloseBtn.Parent = MainFrame
+
+-- [[ برمجة الأزرار والوظائف ]] --
+
+-- فتح وإغلاق اللوحة
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = true
+    ToggleButton.Visible = false
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    ToggleButton.Visible = true
+end)
+
+-- وظيفة البحث عن اللاعب بالاسم الجزئي
+local function findTarget(name)
+    for _, ply in ipairs(Players:GetPlayers()) do
+        if ply ~= LocalPlayer then
+            if ply.Name:lower():sub(1, #name) == name:lower() or ply.DisplayName:lower():sub(1, #name) == name:lower() then
+                return ply
+            end
+        end
+    end
+    return nil
+end
+
+-- تنفيذ الخطوة 1: الانتقال للهدف للكلبشة
+BtnStep1.MouseButton1Click:Connect(function()
+    local inputName = NameInput.Text
+    if inputName == "" then
+        BtnStep1.Text = "الرجاء كتابة اسم اللاعب أولاً!"
+        task.wait(1.5)
+        BtnStep1.Text = "1. انتقال للهدف (كلبشه سريعاً!)"
+        return
+    end
+
+    targetPlayer = findTarget(inputName)
+    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local myChar = LocalPlayer.Character
+        if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+            -- [حفظ الإحداثيات الأولى]: تسجيل مكانك الحالي والآمن تماماً هنا قبل أي حركة أو انتقال للاعب
+            originalPosition = myChar.HumanoidRootPart.CFrame
+            
+            -- الانتقال أمام الخصم مباشرة لتظهر دائرة الكلبشة
+            myChar.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -2.5)
+            BtnStep1.Text = "تم الانتقال! كلبشه الآن بسرعة 👇"
+        end
+    else
+        BtnStep1.Text = "لم يتم العثور على اللاعب!"
+        task.wait(1.5)
+        BtnStep1.Text = "1. انتقال للهدف (كلبشه سريعاً!)"
+    end
+end)
+
+-- تنفيذ الخطوة 2 المعدلة: إسقاط لمستوى آمن والعودة وترك الخصم يسقط وحده
+BtnStep2.MouseButton1Click:Connect(function()
+    local myChar = LocalPlayer.Character
+    if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then return end
+    
+    if not originalPosition then
+        BtnStep2.Text = "خطأ: لم يتم حفظ موقعك الأصلي!"
+        task.wait(1.5)
+        BtnStep2.Text = "2. إسقاط في الفويد والعودة 💀"
+        return
+    end
+
+    -- [تعديل الارتفاع]: النزول إلى مستوى آمن ومتوسط (-140 فقط) حتى لا يتأثر حسابك بنظام الموت التلقائي
+    local targetVoidCFrame = CFrame.new(myChar.HumanoidRootPart.Position.X, -140, myChar.HumanoidRootPart.Position.Z)
+    
+    -- حركة نزول تدريجية فائقة السرعة للحفاظ على الكلبشة حتى الوصول للموقع الأمن
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(myChar.HumanoidRootPart, tweenInfo, {CFrame = targetVoidCFrame})
+    
+    tween:Play()
+    tween.Completed:Wait() -- انتظار انتهاء النزول السريع مع الخصم
+    
+    task.wait(0.15) -- مهلة ضئيلة ليتأكد السيرفر من النزول المشترك
+    
+    -- [تطبيق الخطة]: فك الكلبشة تلقائياً عبر نقل الأداة للحقيبة لترك الخصم يكمل هبوطه الحر وحده نحو الموت
+    for _, tool in ipairs(myChar:GetChildren()) do
+        if tool:IsA("Tool") then
+            tool.Parent = LocalPlayer.Backpack
+        end
+    end
+    
+    -- تصفير السرعة والجاذبية المكتسبة لحسابك لحمايتك تماماً من الارتداد لأسفل
+    myChar.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    
+    -- [العودة الآمنة]: إعادتك الفورية الحية لموقعك الآمن المذكور بالسطر 157 قبل الانتقال للاعب
+    myChar.HumanoidRootPart.CFrame = originalPosition
+    
+    -- تأكيد التثبيت لمنع أي تأخير في محاكاة السيرفر
+    task.wait(0.05)
+    myChar.HumanoidRootPart.CFrame = originalPosition
+    
+    -- إعادة تعيين المتغيرات للعملية القادمة
+    originalPosition = nil
+    BtnStep1.Text = "1. انتقال للهدف (كلبشه سريعاً!)"
+    BtnStep2.Text = "تم تركه ليسقط بنجاح! 😉🔥"
+    task.wait(2)
+    BtnStep2.Text = "2. إسقاط في الفويد والعودة 💀"
+end)

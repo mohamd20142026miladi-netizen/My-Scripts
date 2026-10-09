@@ -1,0 +1,79 @@
+-- إنشاء الواجهة البرمجية (GUI)
+local ScreenGui = Instance.new("ScreenGui")
+local MainButton = Instance.new("Frame") -- الدائرة السوداء
+local UICorner = Instance.new("UICorner")
+local MenuFrame = Instance.new("Frame") -- اللوحة الصغيرة
+local TeleportBtn = Instance.new("TextButton")
+
+-- إعدادات الواجهة
+ScreenGui.Parent = game.CoreGui
+
+-- الدائرة السوداء القابلة للتحريك
+MainButton.Name = "FloatingCircle"
+MainButton.Parent = ScreenGui
+MainButton.BackgroundColor3 = Color3.new(0, 0, 0)
+MainButton.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainButton.Size = UDim2.new(0, 50, 0, 50)
+MainButton.Active = true
+MainButton.Draggable = true -- تفعيل السحب
+
+UICorner.CornerRadius = UDim.new(1, 0)
+UICorner.Parent = MainButton
+
+-- اللوحة الصغيرة (تظهر عند الضغط)
+MenuFrame.Name = "MiniMenu"
+MenuFrame.Parent = ScreenGui
+MenuFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+MenuFrame.Position = UDim2.new(0.5, 60, 0.5, 0)
+MenuFrame.Size = UDim2.new(0, 100, 0, 50)
+MenuFrame.Visible = false
+MenuFrame.Active = true
+MenuFrame.Draggable = true
+
+-- زر الانتقال داخل اللوحة
+TeleportBtn.Name = "TeleportBtn"
+TeleportBtn.Parent = MenuFrame
+TeleportBtn.Size = UDim2.new(1, 0, 1, 0)
+TeleportBtn.Text = "انتقال"
+TeleportBtn.TextColor3 = Color3.new(1, 1, 1)
+TeleportBtn.BackgroundColor3 = Color3.new(1, 0, 0) -- أحمر في البداية
+TeleportBtn.Font = Enum.Font.SourceSansBold
+TeleportBtn.TextSize = 20
+
+-- متغيرات الحالة
+local teleportEnabled = false
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- إظهار وإخفاء اللوحة عند الضغط على الدائرة
+MainButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        MenuFrame.Visible = not MenuFrame.Visible
+    end
+end)
+
+-- تفعيل وتعطيل وضع الانتقال
+TeleportBtn.MouseButton1Click:Connect(function()
+    teleportEnabled = not teleportEnabled
+    if teleportEnabled then
+        TeleportBtn.BackgroundColor3 = Color3.new(0, 1, 0) -- أخضر عند التفعيل
+    else
+        TeleportBtn.BackgroundColor3 = Color3.new(1, 0, 0) -- أحمر عند التعطيل
+    end
+end)
+
+-- وظيفة الانتقال عند لمس الشاشة (فقط للأسطح)
+mouse.Button1Down:Connect(function()
+    if teleportEnabled then
+        local targetPos = mouse.Hit.p
+        local targetPart = mouse.Target
+        
+        -- التأكد من أن المستخدم يلمس جسماً (أرض أو جدار) وليس الهواء
+        if targetPart then
+            local character = player.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                character.HumanoidRootPart.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
+            end
+        end
+    end
+end)

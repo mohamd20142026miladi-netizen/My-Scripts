@@ -1,0 +1,254 @@
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local root = char:WaitForChild("HumanoidRootPart")
+local camera = game.Workspace.CurrentCamera
+local uis = game:GetService("UserInputService")
+
+local voidHeight = Vector3.new(0, 10000, 0)
+local originalCFrame = nil
+local inVoid = false
+local spyMode = false
+local riftPart = nil
+local voidFolder = nil
+local spyCamPart = nil
+
+-- تحديث الشخصية تلقائياً عند الموت والإعادة (Respawn)
+player.CharacterAdded:Connect(function(newChar)
+    char = newChar
+    root = char:WaitForChild("HumanoidRootPart")
+    
+    -- إعادة تعيين الحالات وإزالة الفراغ القديم إن وجد
+    inVoid = false
+    spyMode = false
+    if voidFolder then voidFolder:Destroy() end
+    if spyCamPart then spyCamPart:Destroy() end
+    if riftPart then riftPart:Destroy() end
+end)
+
+-- 1. UI Setup
+local playerGui = player:WaitForChild("PlayerGui")
+if playerGui:FindFirstChild("ZhuoFanVoidGUI") then
+    playerGui.ZhuoFanVoidGUI:Destroy()
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "ZhuoFanVoidGUI"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+local toggleCircle = Instance.new("TextButton")
+toggleCircle.Size = UDim2.new(0, 55, 0, 55)
+toggleCircle.Position = UDim2.new(0.1, 0, 0.2, 0)
+toggleCircle.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+toggleCircle.Text = "V"
+toggleCircle.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleCircle.TextSize = 22
+toggleCircle.Font = Enum.Font.SourceSansBold
+toggleCircle.Active = true
+toggleCircle.Parent = gui
+
+local circleCorner = Instance.new("UICorner")
+circleCorner.CornerRadius = UDim.new(1, 0)
+circleCorner.Parent = toggleCircle
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 180, 0, 90)
+mainFrame.Position = UDim2.new(0.5, -90, 0.4, -45)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.Visible = false
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = gui
+
+local frameCorner = Instance.new("UICorner")
+frameCorner.Parent = mainFrame
+
+local voidBtn = Instance.new("TextButton")
+voidBtn.Size = UDim2.new(0, 140, 0, 45)
+voidBtn.Position = UDim2.new(0.5, -70, 0.5, -22)
+voidBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+voidBtn.Text = "Void"
+voidBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+voidBtn.TextSize = 20
+voidBtn.Font = Enum.Font.SourceSansBold
+voidBtn.Parent = mainFrame
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.Parent = voidBtn
+
+-- زر العودة السريع أثناء التجسس
+local returnSpyBtn = Instance.new("TextButton")
+returnSpyBtn.Size = UDim2.new(0, 160, 0, 50)
+returnSpyBtn.Position = UDim2.new(0.5, -80, 0.8, 0)
+returnSpyBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+returnSpyBtn.Text = "العودة للفراغ (Exit Spy)"
+returnSpyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+returnSpyBtn.TextSize = 16
+returnSpyBtn.Font = Enum.Font.SourceSansBold
+returnSpyBtn.Visible = false
+returnSpyBtn.Parent = gui
+
+local returnCorner = Instance.new("UICorner")
+returnCorner.Parent = returnSpyBtn
+
+-- نظام سحب الدائرة
+local dragging = false
+local dragStart, startPos
+local moved = false
+
+toggleCircle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = toggleCircle.Position
+        moved = false
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+                if not moved then
+                    mainFrame.Visible = not mainFrame.Visible
+                end
+            end
+        end)
+    end
+end)
+
+uis.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        if delta.Magnitude > 5 then
+            moved = true
+        end
+        toggleCircle.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- دوال الفراغ والتجسس
+local function exitVoid()
+    if inVoid and originalCFrame then
+        root.CFrame = originalCFrame
+        inVoid = false
+        spyMode = false
+        camera.CameraSubject = char:WaitForChild("Humanoid")
+        returnSpyBtn.Visible = false
+        if voidFolder then voidFolder:Destroy() end
+        if spyCamPart then spyCamPart:Destroy() end
+    end
+end
+
+local function createVoidRoom(pos)
+    voidFolder = Instance.new("Folder", workspace)
+    voidFolder.Name = "ZhuoFanVoid"
+
+    local floor = Instance.new("Part", voidFolder)
+    floor.Size = Vector3.new(150, 5, 150)
+    floor.Position = pos - Vector3.new(0, 3, 0)
+    floor.Anchored = true
+    floor.Color = Color3.fromRGB(10, 10, 10)
+
+    for i = 1, 4 do
+        local wall = Instance.new("Part", voidFolder)
+        wall.Size = Vector3.new(150, 100, 5)
+        wall.Anchored = true
+        wall.Color = Color3.fromRGB(0, 0, 0)
+        wall.Material = Enum.Material.Neon
+        if i == 1 then wall.Position = pos + Vector3.new(75, 45, 0) wall.Orientation = Vector3.new(0, 90, 0) end
+        if i == 2 then wall.Position = pos + Vector3.new(-75, 45, 0) wall.Orientation = Vector3.new(0, 90, 0) end
+        if i == 3 then wall.Position = pos + Vector3.new(0, 45, 75) end
+        if i == 4 then wall.Position = pos + Vector3.new(0, 45, -75) end
+    end
+
+    local roof = Instance.new("Part", voidFolder)
+    roof.Size = Vector3.new(150, 5, 150)
+    roof.Position = pos + Vector3.new(0, 95, 0)
+    roof.Anchored = true
+    roof.Color = Color3.fromRGB(0, 0, 0)
+
+    local screen = Instance.new("Part", voidFolder)
+    screen.Size = Vector3.new(50, 30, 2)
+    screen.Position = pos + Vector3.new(0, 12, -45)
+    screen.Anchored = true
+    screen.Color = Color3.fromRGB(15, 15, 15)
+    screen.Material = Enum.Material.Glass
+
+    local screenGui = Instance.new("SurfaceGui", screen)
+    screenGui.Face = Enum.NormalId.Back
+    screenGui.AlwaysOnTop = true
+    
+    local spyButton = Instance.new("TextButton", screenGui)
+    spyButton.Size = UDim2.new(1, 0, 1, 0)
+    spyButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    spyButton.BackgroundTransparency = 0.1
+    spyButton.Text = "SPY MODE [CLICK]"
+    spyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    spyButton.TextSize = 45
+    spyButton.Font = Enum.Font.SourceSansBold
+
+    spyButton.Activated:Connect(function()
+        if not spyMode then
+            spyMode = true
+            spyButton.Text = "RETURN TO VOID"
+            camera.CameraSubject = spyCamPart
+            returnSpyBtn.Visible = true
+        else
+            spyMode = false
+            spyButton.Text = "SPY MODE [CLICK]"
+            camera.CameraSubject = char:WaitForChild("Humanoid")
+            returnSpyBtn.Visible = false
+        end
+    end)
+end
+
+returnSpyBtn.Activated:Connect(function()
+    if spyMode then
+        spyMode = false
+        camera.CameraSubject = char:WaitForChild("Humanoid")
+        returnSpyBtn.Visible = false
+    end
+end)
+
+local function spawnRift()
+    if riftPart then riftPart:Destroy() end
+    
+    riftPart = Instance.new("Part", workspace)
+    riftPart.Size = Vector3.new(1.5, 9, 0.4)
+    riftPart.CFrame = root.CFrame * CFrame.new(0, 1, -5) * CFrame.Angles(0, 0, math.rad(25))
+    riftPart.Anchored = true
+    riftPart.CanCollide = false
+    riftPart.Color = Color3.fromRGB(0, 0, 0)
+    riftPart.Material = Enum.Material.Glass
+
+    local highlight = Instance.new("Highlight", riftPart)
+    highlight.FillColor = Color3.fromRGB(0, 0, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+
+    riftPart.Touched:Connect(function(hit)
+        if hit.Parent == char and not inVoid then
+            inVoid = true
+            originalCFrame = root.CFrame
+            
+            spyCamPart = Instance.new("Part", workspace)
+            spyCamPart.Anchored = true
+            spyCamPart.Transparency = 1
+            spyCamPart.CFrame = originalCFrame
+
+            local voidPos = originalCFrame.Position + voidHeight
+            createVoidRoom(voidPos)
+            
+            root.CFrame = CFrame.new(voidPos)
+            riftPart:Destroy()
+        end
+    end)
+end
+
+voidBtn.Activated:Connect(function()
+    if voidBtn.BackgroundColor3 == Color3.fromRGB(200, 0, 0) then
+        voidBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+        spawnRift()
+    else
+        voidBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        exitVoid()
+        if riftPart then riftPart:Destroy() end
+    end
+end)

@@ -1,0 +1,162 @@
+-- منع تكرار تشغيل السكربت لتفادي الإدخالات المتكررة
+if _G.TimeRewindExecuted then return end
+_G.TimeRewindExecuted = true
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+-- إعدادات الحالة
+local isRewindActive = false
+local lastDeathPosition = nil
+local isPanelVisible = false
+
+-- --- وظيفة السحب والتحريك للهواتف والشاشات (Drag Function) ---
+local function makeDraggable(guiObject)
+    local dragging, dragInput, dragStart, startPos
+    
+    guiObject.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = guiObject.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    guiObject.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            guiObject.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- --- إنشاء الواجهة (UI) ---
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TimeRewindHub"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+
+-- 1. الدائرة السوداء الصغيرة المتحركة
+local BlackCircle = Instance.new("TextButton")
+BlackCircle.Name = "BlackCircle"
+BlackCircle.Size = UDim2.new(0, 45, 0, 45)
+BlackCircle.Position = UDim2.new(0.1, 0, 0.4, 0)
+BlackCircle.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+BlackCircle.Text = ""
+BlackCircle.BorderSizePixel = 0
+BlackCircle.Parent = ScreenGui
+
+local UICornerCircle = Instance.new("UICorner")
+UICornerCircle.CornerRadius = UDim.new(1, 0)
+UICornerCircle.Parent = BlackCircle
+
+local UIBorderCircle = Instance.new("UIStroke")
+UIBorderCircle.Color = Color3.fromRGB(60, 60, 60)
+UIBorderCircle.Thickness = 2
+UIBorderCircle.Parent = BlackCircle
+
+makeDraggable(BlackCircle)
+
+-- 2. اللوحة المتحركة (Main Panel)
+local MainPanel = Instance.new("Frame")
+MainPanel.Name = "MainPanel"
+MainPanel.Size = UDim2.new(0, 200, 0, 100)
+MainPanel.Position = UDim2.new(0.1, 55, 0.4, 0)
+MainPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainPanel.BorderSizePixel = 0
+MainPanel.Visible = false
+MainPanel.Parent = ScreenGui
+
+local UICornerPanel = Instance.new("UICorner")
+UICornerPanel.CornerRadius = UDim.new(0, 12)
+UICornerPanel.Parent = MainPanel
+
+local UIBorderPanel = Instance.new("UIStroke")
+UIBorderPanel.Color = Color3.fromRGB(50, 50, 50)
+UIBorderPanel.Thickness = 1
+UIBorderPanel.Parent = MainPanel
+
+makeDraggable(MainPanel)
+
+-- 3. الزر الأحمر (إعادة الزمن)
+local RewindButton = Instance.new("TextButton")
+RewindButton.Name = "RewindButton"
+RewindButton.Size = UDim2.new(0, 160, 0, 50)
+RewindButton.Position = UDim2.new(0.5, -80, 0.5, -25)
+RewindButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- أحمر في البداية
+RewindButton.Text = "إعادة الزمن"
+RewindButton.Font = Enum.Font.SourceSansBold
+RewindButton.TextColor3 = Color3.fromRGB(0, 0, 0) -- خط أسود كما طلبت
+RewindButton.TextSize = 20
+RewindButton.BorderSizePixel = 0
+RewindButton.Parent = MainPanel
+
+local UICornerButton = Instance.new("UICorner")
+UICornerButton.CornerRadius = UDim.new(0, 8)
+UICornerButton.Parent = RewindButton
+
+-- --- البرمجة والأكواد الوظيفية ---
+
+-- إظهار وإخفاء اللوحة عند الضغط على الدائرة السوداء
+BlackCircle.MouseButton1Click:Connect(function()
+    isPanelVisible = not isPanelVisible
+    MainPanel.Visible = isPanelVisible
+end)
+
+-- تفعيل وتعطيل السكربت عبر الزر
+RewindButton.MouseButton1Click:Connect(function()
+    isRewindActive = not isRewindActive
+    if isRewindActive then
+        -- تحويل للون الأخضر والتشغيل
+        RewindButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    else
+        -- تحويل للون الأحمر والإيقاف
+        RewindButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        lastDeathPosition = nil -- مسح الإحداثيات عند الإيقاف
+    end
+end)
+
+-- رصد الموت والانتقال الفوري
+local function setupCharacterLogic(character)
+    local humanoid = character:WaitForChild("Humanoid", 5)
+    local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+    
+    if humanoid and rootPart then
+        -- أولاً: رصد لحظة الموت مباشرة لتسجيل الإحداثيات
+        humanoid.Died:Connect(function()
+            if isRewindActive then
+                lastDeathPosition = rootPart.CFrame
+            end
+        end)
+    end
+end
+
+-- تطبيق المنطق عند تحميل الشخصية وتجددها
+if LocalPlayer.Character then
+    setupCharacterLogic(LocalPlayer.Character)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(character)
+    setupCharacterLogic(character)
+    -- عند إعادة إحياء اللاعب، نقله فوراً إلى مكان موته السابق إذا تم تفعيل الخاصية
+    task.wait(0.1)
+    local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+    if isRewindActive and lastDeathPosition and rootPart then
+        rootPart.CFrame = lastDeathPosition
+    end
+end)

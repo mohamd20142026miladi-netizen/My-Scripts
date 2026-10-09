@@ -1,0 +1,96 @@
+local ScreenGui = Instance.new("ScreenGui")
+local MainButton = Instance.new("Frame")
+local UICorner = Instance.new("UICorner")
+local MainFrame = Instance.new("Frame")
+local UICorner_2 = Instance.new("UICorner")
+local ViewBox = Instance.new("TextBox")
+local ViewBtn = Instance.new("TextButton")
+local TPBox = Instance.new("TextBox")
+local TPBtn = Instance.new("TextButton")
+
+-- إعدادات الشاشة
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- الدائرة السوداء الصغيرة
+MainButton.Name = "MainButton"
+MainButton.Parent = ScreenGui
+MainButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+MainButton.Position = UDim2.new(0.1, 0, 0.5, 0)
+MainButton.Size = UDim2.new(0, 50, 0, 50)
+MainButton.Active = true
+MainButton.Draggable = true -- جعلها قابلة للسحب
+
+UICorner.CornerRadius = UDim.new(1, 0)
+UICorner.Parent = MainButton
+
+-- اللوحة الرئيسية (مخفية في البداية)
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Position = UDim2.new(0.4, 0, 0.4, 0)
+MainFrame.Size = UDim2.new(0, 250, 0, 300)
+MainFrame.Visible = false
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+UICorner_2.Parent = MainFrame
+
+-- وظيفة إظهار وإخفاء اللوحة عند الضغط على الدائرة
+local buttonTrigger = Instance.new("TextButton")
+buttonTrigger.Parent = MainButton
+buttonTrigger.BackgroundTransparency = 1
+buttonTrigger.Size = UDim2.new(1,0,1,0)
+buttonTrigger.Text = ""
+buttonTrigger.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- شريط كتابة "رؤية"
+ViewBox.Parent = MainFrame
+ViewBox.PlaceholderText = "اسم اللاعب للرؤية..."
+ViewBox.Size = UDim2.new(0, 200, 0, 40)
+ViewBox.Position = UDim2.new(0.1, 0, 0.1, 0)
+
+-- زر "رؤية" باللون الأحمر
+ViewBtn.Parent = MainFrame
+ViewBtn.Text = "رؤية"
+ViewBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+ViewBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ViewBtn.Size = UDim2.new(0, 200, 0, 40)
+ViewBtn.Position = UDim2.new(0.1, 0, 0.3, 0)
+
+-- شريط كتابة "انتقال"
+TPBox.Parent = MainFrame
+TPBox.PlaceholderText = "اسم اللاعب للانتقال..."
+TPBox.Size = UDim2.new(0, 200, 0, 40)
+TPBox.Position = UDim2.new(0.1, 0, 0.55, 0)
+
+-- زر "انتقال" باللون الأزرق
+TPBtn.Parent = MainFrame
+TPBtn.Text = "انتقال"
+TPBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 200)
+TPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TPBtn.Size = UDim2.new(0, 200, 0, 40)
+TPBtn.Position = UDim2.new(0.1, 0, 0.75, 0)
+
+-- وظيفة الرؤية (Spectate)
+ViewBtn.MouseButton1Click:Connect(function()
+    local target = ViewBox.Text
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v.Name:lower():sub(1, #target) == target:lower() then
+            workspace.CurrentCamera.CameraSubject = v.Character.Humanoid
+        end
+    end
+end)
+
+-- وظيفة الانتقال (Teleport)
+TPBtn.MouseButton1Click:Connect(function()
+    local target = TPBox.Text
+    local player = game.Players.LocalPlayer
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v.Name:lower():sub(1, #target) == target:lower() then
+            player.Character.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame
+        end
+    end
+end)

@@ -1,0 +1,116 @@
+-- إنشاء الواجهة الرسومية (GUI) الفضائية
+local ScreenGui = Instance.new("ScreenGui")
+local OpenButton = Instance.new("ImageButton")
+local MainFrame = Instance.new("Frame")
+local ToggleButton = Instance.new("TextButton")
+
+ScreenGui.Name = "DeltaCosmicBridgeGui"
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
+
+-- 1. تصميم الدائرة السوداء الصغيرة في حافة الشاشة
+OpenButton.Name = "OpenButton"
+OpenButton.Parent = ScreenGui
+OpenButton.Position = UDim2.new(0.02, 0, 0.4, 0)
+OpenButton.Size = UDim2.new(0, 45, 0, 45)
+OpenButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+OpenButton.BorderSizePixel = 0
+
+local UICorner_Btn = Instance.new("UICorner")
+UICorner_Btn.CornerRadius = UDim.new(1, 0)
+UICorner_Btn.Parent = OpenButton
+
+-- 2. تصميم اللوحة المستطيلة الصغيرة
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.Position = UDim2.new(0.12, 0, 0.4, 0)
+MainFrame.Size = UDim2.new(0, 130, 0, 70)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Visible = false 
+
+-- 3. تصميم الزر (مكتوب عليه الجسر الفضائي)
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Parent = MainFrame
+ToggleButton.Position = UDim2.new(0.1, 0, 0.2, 0)
+ToggleButton.Size = UDim2.new(0, 104, 0, 45)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+ToggleButton.Text = "الجسر الفضائي"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.TextSize = 14
+
+local UICorner_Toggle = Instance.new("UICorner")
+UICorner_Toggle.CornerRadius = UDim.new(0, 6)
+UICorner_Toggle.Parent = ToggleButton
+
+OpenButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- منطق ممر الفضاء الكوني المستقر
+local Player = game.Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+local IsActive = false
+local CosmicConnection = nil
+
+-- تحديد الألوان المستوحاة من الصورة 1000004426.jpg بدقة
+local DeepSpaceColor = Color3.fromRGB(45, 10, 85) -- بنفسجي نيلي عميق (لون السماء)
+local PlanetGlowColor = Color3.fromRGB(255, 100, 0) -- برتقالي ناري متوهج (لون الكوكب)
+
+ToggleButton.MouseButton1Click:Connect(function()
+    IsActive = not IsActive
+    
+    if IsActive then
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0) -- أخضر
+        
+        CosmicConnection = RunService.RenderStepped:Connect(function()
+            local Character = Player.Character
+            local Root = Character and Character:FindFirstChild("HumanoidRootPart")
+            local Humanoid = Character and Character:FindFirstChild("Humanoid")
+            
+            if Root and Humanoid and Humanoid.MoveDirection.Magnitude > 0 then
+                
+                -- ضبط الارتفاع ليكون تحت القدم مباشرة للحفاظ على جرافيك المشي
+                local BasePos = Root.Position + Vector3.new(0, -2.85, 0) + (Humanoid.MoveDirection * 0.4)
+                
+                -- 1. إنشاء البلاطة الزجاجية الشفافة بلون الفضاء النيلي العميق
+                local CosmicGlass = Instance.new("Part")
+                CosmicGlass.Size = Vector3.new(6, 0.2, 4)
+                CosmicGlass.Material = Enum.Material.Glass
+                CosmicGlass.Color = DeepSpaceColor
+                CosmicGlass.Transparency = 0.4 -- شفافة لتندمج مع خلفية السماء
+                CosmicGlass.Anchored = true
+                CosmicGlass.CanCollide = true
+                CosmicGlass.CFrame = CFrame.new(BasePos, BasePos + Root.CFrame.LookVector)
+                CosmicGlass.Parent = workspace
+                Debris:AddItem(CosmicGlass, 2.2)
+                
+                -- 2. جرافيك الإشعاع السفلي المتوهج بلون الكوكب الناري الخافت
+                local PlanetGlow = Instance.new("Part")
+                PlanetGlow.Size = Vector3.new(5.9, 0.05, 3.9)
+                PlanetGlow.Material = Enum.Material.Neon
+                PlanetGlow.Color = PlanetGlowColor
+                PlanetGlow.Transparency = 0.82 -- خافت ليعطي لمعاناً سحرياً مذهلاً مثل توهج الكوكب
+                PlanetGlow.Anchored = true
+                PlanetGlow.CanCollide = false
+                PlanetGlow.CFrame = CosmicGlass.CFrame * CFrame.new(0, -0.08, 0)
+                PlanetGlow.Parent = workspace
+                Debris:AddItem(PlanetGlow, 2.2)
+            end
+        end)
+    else
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0) -- أحمر
+        if CosmicConnection then
+            CosmicConnection:Disconnect()
+            CosmicConnection = nil
+        end
+    end
+end)
+
+-- تصفير عند الموت
+Player.CharacterAdded:Connect(function()
+    IsActive = false
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    if CosmicConnection then CosmicConnection:Disconnect() end
+end)

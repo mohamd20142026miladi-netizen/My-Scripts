@@ -1,0 +1,73 @@
+-- إنشاء الواجهة الأساسية
+local ScreenGui = Instance.new("ScreenGui")
+local ToggleButton = Instance.new("Frame")
+local UICorner = Instance.new("UICorner")
+local MainPanel = Instance.new("Frame")
+local HackButton = Instance.new("TextButton")
+local UICorner_2 = Instance.new("UICorner")
+
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ResetOnSpawn = false
+
+-- إعداد الدائرة السوداء الصغيرة
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Parent = ScreenGui
+ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ToggleButton.Position = UDim2.new(0.1, 0, 0.5, 0)
+ToggleButton.Size = UDim2.new(0, 40, 0, 40)
+ToggleButton.Active = true
+ToggleButton.Draggable = true -- جعل الدائرة قابلة للسحب
+
+UICorner.CornerRadius = UDim.new(1, 0)
+UICorner.Parent = ToggleButton
+
+-- إعداد اللوحة المتوسطة
+MainPanel.Name = "MainPanel"
+MainPanel.Parent = ScreenGui
+MainPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainPanel.Position = UDim2.new(0.4, 0, 0.4, 0)
+MainPanel.Size = UDim2.new(0, 200, 0, 100)
+MainPanel.Visible = false
+MainPanel.Active = true
+MainPanel.Draggable = true -- جعل اللوحة قابلة للسحب
+
+-- زر الاختراق داخل اللوحة
+HackButton.Name = "HackButton"
+HackButton.Parent = MainPanel
+HackButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0) -- أحمر في البداية
+HackButton.Position = UDim2.new(0.1, 0, 0.25, 0)
+HackButton.Size = UDim2.new(0, 160, 0, 50)
+HackButton.Font = Enum.Font.SourceSansBold
+HackButton.Text = "اختراق"
+HackButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+HackButton.TextSize = 24
+
+UICorner_2.Parent = HackButton
+
+-- وظيفة إظهار وإخفاء اللوحة عند الضغط على الدائرة
+ToggleButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        MainPanel.Visible = not MainPanel.Visible
+    end
+end)
+
+-- وظيفة الاختراق (Noclip)
+local noclip = false
+HackButton.MouseButton1Click:Connect(function()
+    noclip = not noclip
+    if noclip then
+        HackButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0) -- أخضر عند التفعيل
+    else
+        HackButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0) -- أحمر عند الإيقاف
+    end
+end)
+
+game:GetService("RunService").Stepped:Connect(function()
+    if noclip then
+        for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
